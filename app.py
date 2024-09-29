@@ -1,4 +1,6 @@
 from flask import Flask, jsonify, request
+import requests
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
@@ -6,13 +8,13 @@ app = Flask(__name__)
 def home():
     return jsonify(message="Welcome to the Flask API!")
 
-@app.route('/api/data', methods=['GET'])
+@app.route('/api/session_id', methods=['GET'])
 def get_data():
-    data = {
-        'name': 'Sample Data',
-        'value': 123
-    }
-    return jsonify(data)
+    session = requests.Session() 
+
+    response = session.get('http://aspen.cpsd.us/aspen/logon.do') 
+    
+    return {'session_id': session.cookies.get_dict().get('JSESSIONID')}
 
 @app.route('/api/data', methods=['POST'])
 def post_data():
