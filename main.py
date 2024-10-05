@@ -43,5 +43,31 @@ def fetch_data():
     oauth = OAuth2Session(client_id, token=session['oauth_token'])
     response = oauth.get('https://aspen.cpsd.us/app/rest/aasp/login?homepageUrl=https://aspen.cpsd.us/aspen-login/aaspLogin&organizationOid=*dst&idpName=Cambridge%20Google%20SAML')
     return response.json()
+
+def get_sessionid():
+    url = "https://aspen.cpsd.us/aspen/logon.do"
+
+    session = requests.Session()
+    response = session.get(url)
+    
+    sessionid = session.cookies.get_dict().get('JSESSIONID')
+
+    return sessionid
+
+@app.route('/api/getsaml', methods=['GET'])
+def get_data():
+    session = requests.Session()
+    session.get("https://aspen.cpsd.us/aspen/logon.do")
+    response = session.get("https://aspen.cpsd.us/app/rest/aasp/login?homepageUrl=https://aspen.cpsd.us/aspen-login/aaspLogin&organizationOid=*dst&idpName=Cambridge%20Google%20SAML")
+
+    decodedurl = unquote(response.url)\
+    
+    samlurl = decodedurl.split("SAMLRequest=")[1]
+    samlurl = samlurl.split("&Relay")[0]
+
+    html = response.text
+
+    return jsonify({"status": "success"}, {"responseurl": samlurl})
+
 if __name__ == '__main__':
     app.run(debug=True)
