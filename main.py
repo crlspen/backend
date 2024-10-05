@@ -56,7 +56,6 @@ def callback():
 def fetch_data():
     oauth = OAuth2Session(client_id, token=session['oauth_token'])
     response = oauth.get('https://aspen.cpsd.us/app/rest/aasp/login?homepageUrl=https://aspen.cpsd.us/aspen-login/aaspLogin&organizationOid=*dst&idpName=Cambridge%20Google%20SAML')
-<<<<<<< HEAD
     return response.json()
 
 def get_sessionid():
@@ -83,12 +82,6 @@ def get_data():
     html = response.text
 
     return jsonify({"status": "success"}, {"responseurl": samlurl})
-=======
-    if response.status_code == 200:
-        return f"Fetched data: {response.json()}"
-    else:
-        return f"Failed to fetch data: {response.status_code}"
->>>>>>> refs/remotes/origin/main
 
 if __name__ == '__main__':
     app.run(debug=True)
