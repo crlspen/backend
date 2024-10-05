@@ -1,47 +1,65 @@
-from flask import Flask, jsonify, request, redirect, session, url_for
+from flask import Flask, jsonify, request, redirect, session, url_for, make_response
+from flask_session import Session
 import requests
 from requests_oauthlib import OAuth2Session
-from bs4 import BeautifulSoup
 import os
+import redis
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default_secret_key')
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
+app.config['SESSION_TYPE'] = 'redis'
+app.config['SESSION_REDIS'] = redis.Redis(host='localhost', port=6379, db=0)
+app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_USE_SIGNER'] = True
+
+Session(app)
+
 client_id = 'CLIENT_ID'
 client_secret = 'CLIENT_SECRET'
 authorization_base_url = 'https://accounts.google.com/o/oauth2/auth'
 token_url = 'https://accounts.google.com/o/oauth2/token'
-redirect_uri = 'https://2699-2601-184-497f-6409-cc31-ff15-4264-d84b.ngrok-free.app'
+redirect_uri = 'REDIRECT_URI'
 scopes = ['openid', 'email', 'profile']
+
 @app.route('/')
 def home():
-    return jsonify(message="Welcome to the Flask API!")
+    return jsonify(message="Welcome to the aspine")
 
-#@app.route('/api/session_id', methods=['GET'])
-#def get_data():
-    #session = requests.Session() 
-
-    #response = session.get('http://aspen.cpsd.us/aspen/logon.do') 
-    
-    #return {'session_id': session.cookies.get_dict().get('JSESSIONID')}
-
-@app.route('/api/OAuth2')
+@app.route('/OAuth2/login')
 def get_data():
     oauth = OAuth2Session(client_id, redirect_uri=redirect_uri, scope=scopes)
     authorization_url, state = oauth.authorization_url(authorization_base_url, access_type="offline", prompt="select_account")
     session['oauth_state'] = state
+    #res = make_response()
+    #res.set_cookie('state', state)
+    print(f"Session at login: {session}")
     return redirect(authorization_url)
 
-@app.route('/oauth2/callback')
+@app.route('/OAuth2/callback')
 def callback():
+    #session['oauth_state'] = request.cookies.get('state')
+    print(f"Session in callback: {session}")
+    if 'oauth_state' in session:
+        print(f"State in session at callback: {session['oauth_state']}")
+    else:
+        print("No state in session")
+        return jsonify(message="No state in session")
     oauth = OAuth2Session(client_id, redirect_uri=redirect_uri, state=session['oauth_state'])
     token = oauth.fetch_token(token_url, authorization_response=request.url, client_secret=client_secret)
     session['oauth_token'] = token
-    return jsonify(message="You have successfully logged in!")
+    print(f"Session in callback: {session}")
+    return redirect(url_for('fetch_data'))
 
-@app.route('/fetch_data')
+@app.route('/OAuth2/fetch_data')
 def fetch_data():
     oauth = OAuth2Session(client_id, token=session['oauth_token'])
     response = oauth.get('https://aspen.cpsd.us/app/rest/aasp/login?homepageUrl=https://aspen.cpsd.us/aspen-login/aaspLogin&organizationOid=*dst&idpName=Cambridge%20Google%20SAML')
-    return response.json()
+    if response.status_code == 200:
+        return f"Fetched data: {response.json()}"
+    else:
+        return f"Failed to fetch data: {response.status_code}"
+
 if __name__ == '__main__':
     app.run(debug=True)
